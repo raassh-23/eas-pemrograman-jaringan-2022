@@ -48,31 +48,30 @@ class ClientInterface:
             # logging.warning("data received from server:")
             return hasil
         except:
-            logging.warning("error during data receiving")
+            # logging.warning("error during data receiving")
             return False
 
-    def set_location(self, id_player, x=100, y=100):
-        logging.warning(f"set_location {id_player} {x} {y}")
+    def set_location(self, id_player, x, y):
         command_str = f"set_location {id_player} {x} {y}"
+        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return True
         else:
             return False
 
-    def get_location(self, id_player):
-        logging.warning(f"get_location {id_player}")
-        command_str = f"get_location {id_player}"
+    def set_angle(self, id_player, angle):
+        command_str = f"set_angle {id_player} {angle}"
+        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
-            lokasi = hasil['location'].split(',')
-            return (int(lokasi[0]), int(lokasi[1]))
+            return True
         else:
-            return None
+            return False
 
-    def join(self, id_player, x=100, y=100):
-        logging.warning(f"join {id_player} {x} {y}")
-        command_str = f"join {id_player} {x} {y}"
+    def join(self, id_player, x, y, angle):
+        command_str = f"join {id_player} {x} {y} {angle}"
+        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         print(hasil)
         if (self._is_success(hasil)):
@@ -81,8 +80,8 @@ class ClientInterface:
             return None
 
     def refresh(self):
-        logging.warning("refresh")
         command_str = f"refresh"
+        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return hasil['players']
@@ -90,8 +89,8 @@ class ClientInterface:
             return None
 
     def leave(self, id_player):
-        logging.warning(f"leave {id_player}")
         command_str = f"leave {id_player}"
+        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return True
@@ -102,7 +101,7 @@ class ClientInterface:
         if (hasil['status'] == 'OK'):
             return True
         else:
-            print('error: ' + hasil['data'])
+            logging.warning(f"error: {hasil['data']}")
             return False
 
 
@@ -118,7 +117,6 @@ class Player:
         self.warna_b = b
         self.idplayer = idplayer
         self.widget = Widget()
-        self.buttons = None
         self.left = False
         self._keyboard = None
         self.angle = 0
@@ -129,29 +127,18 @@ class Player:
     def get_idplayer(self):
         return self.idplayer
 
-    def set_xy(self, x=100, y=100):
+    def set_player_location(self, x, y, angle):
         self.current_x = x
         self.current_y = y
-
-    def get_widget(self):
-        return self.widget
-
-    def get_buttons(self):
-        return self.buttons
+        self.angle = angle
 
     def draw(self):
-        cur_location = client_interface.get_location(self.idplayer)
-
-        if cur_location is None:
-            self.left = True
-            return
-
-        self.current_x, self.current_y = cur_location
-
         wid = self.widget
         r = self.warna_r
         g = self.warna_g
         b = self.warna_b
+
+        wid.canvas.clear()
 
         with wid.canvas:
             size = 60
@@ -194,8 +181,7 @@ class Player:
         else:
             return
 
-        client_interface.set_location(
-            self.idplayer, self.current_x, self.current_y)
+        client_interface.set_location(self.idplayer, self.current_x, self.current_y)
 
     def inisialiasi(self):
         self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
@@ -212,7 +198,11 @@ class Player:
     def _on_mouse_pos(self, window, pos):
         dx = pos[0] - self.current_x
         dy = pos[1] - self.current_y
-        self.angle = math.degrees(math.atan2(dy, dx)) - 90
+        new_angle = math.degrees(math.atan2(dy, dx)) - 90
+        
+        if new_angle != self.angle:
+            self.angle = new_angle
+            client_interface.set_angle(self.idplayer, self.angle)
 
 class MyApp(App):
     players = []
@@ -221,49 +211,49 @@ class MyApp(App):
     def refresh(self, callback):
         players_server = client_interface.refresh()
         if players_server:
-            for i in players_server:
-                if any(i['id_player'] == j.idplayer for j in self.players):
+            for player in players_server:
+                if any(player['id'] == j.idplayer for j in self.players):
+                    if player['left'] == 1:
+                        existing_player.left = True
+                        continue
+
+                    existing_player = next(j for j in self.players if j.idplayer == player['id'])
+                    existing_player.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
                     continue
 
-                p = Player(i['id_player'], 0, 1, 1)
-                lokasi = i['location'].split(',')
-                p.set_xy(lokasi[0], lokasi[1])
-                widget = p.get_widget()
-                self.players.append(p)
-                self.root.add_widget(widget)
+                new_player = Player(player['id'], 0, 1, 1)
+                new_player.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
+                self.players.append(new_player)
+                self.root.add_widget(new_player.widget)
 
-        for i in self.players:
-            if i.left:
-                self.root.remove_widget(i.get_widget())
-                self.players.remove(i)
+        for player in self.players:
+            if player.left:
+                self.root.remove_widget(player.widget)
+                self.players.remove(player)
                 continue
 
-            i.get_widget().canvas.clear()
-            i.draw()
+            player.draw()
 
     def build(self):
         self.player_id = random.randint(0, 1024)
         p1 = Player(f'{self.player_id}', 1, 0, 0, True)
-        p1.set_xy(100, 100)
-        widget1 = p1.get_widget()
+        p1.set_player_location(100, 100, 0)
         self.players.append(p1)
 
         root = BoxLayout(orientation='horizontal')
-        root.add_widget(widget1)
+        root.add_widget(p1.widget)
 
-        joined = client_interface.join(p1.idplayer, 100, 100)
+        joined = client_interface.join(p1.idplayer, p1.current_x, p1.current_y, p1.current_y)
         print(joined)
         if joined:
-            for i in joined:
-                if any(i['id_player'] == j.idplayer for j in self.players):
+            for player in joined:
+                if any(player['id'] == j.idplayer for j in self.players):
                     continue
 
-                p = Player(i['id_player'], 0, 1, 1)
-                lokasi = i['location'].split(',')
-                p.set_xy(lokasi[0], lokasi[1])
-                widget = p.get_widget()
+                p = Player(player['id'], 0, 1, 1)
+                p.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
                 self.players.append(p)
-                root.add_widget(widget)
+                root.add_widget(p.widget)
 
         Clock.schedule_interval(self.refresh, 1/30)
 
