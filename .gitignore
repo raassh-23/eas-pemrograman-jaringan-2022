@@ -162,3 +162,5 @@ cython_debug/
 g.db.bak
 g.db.dat
 g.db.dir
+
+eas-progjar.pem
