@@ -282,5 +282,5 @@ if __name__ == '__main__':
     my_app = MyApp()
     try:
         my_app.run()
-    except KeyboardInterrupt:
+    except:
         client_interface.leave(my_app.player_name)
