@@ -31,6 +31,19 @@ class PlayerServerInterface:
         except Exception as e:
             return dict(status='ERROR', data=str(e))
 
+    def get_position_angle(self, params=[]):
+        try:
+            pnum = params[0]
+            player = self.players[pnum].split(',')
+            player_data = {
+                'x': player[0], 
+                'y': player[1], 
+                'angle': player[2]
+            }
+            return dict(status='OK', player=player_data)
+        except Exception as e:
+            return dict(status='ERROR', data=str(e))
+
     def join(self, params=[]):
         try:
             pnum = params[0]
@@ -46,30 +59,19 @@ class PlayerServerInterface:
 
             players = []
             for key in self.players:
-                data = self.players[key].split(',')
-                player = {
-                    'name': key,
-                    'x': data[0],
-                    'y': data[1],
-                    'angle': data[2]
-                }
-                players.append(player)
+                if key == pnum:
+                    continue
+                
+                players.append(key)
             return dict(status='OK', players=players)
         except Exception as e:
             return dict(status='ERROR', data=str(e))
 
-    def refresh(self, params=[]):
+    def refresh_players(self, params=[]):
         try:
             players = []
             for key in self.players:
-                data = self.players[key].split(',')
-                player = {
-                    'name': key,
-                    'x': data[0],
-                    'y': data[1],
-                    'angle': data[2]
-                }
-                players.append(player)
+                players.append(key)
             return dict(status='OK', players=players)
         except Exception as e:
             return dict(status='ERROR', data=str(e))
@@ -86,12 +88,13 @@ class PlayerServerInterface:
 
 if __name__ == '__main__':
     p = PlayerServerInterface()
-    print(p.join(['1', '0', '0', '0']))
-    print(p.refresh())
-    print(p.set_position(['1', '10', '-10']))
-    print(p.refresh())
-    print(p.set_angle(['1', '90']))
-    print(p.refresh())
-    print(p.leave(['1']))
-    print(p.refresh())
+    print(p.join(['name', '0', '0', '0']))
+    print(p.refresh_players())
+    print(p.get_position_angle(['name']))
+    print(p.set_position(['name', '10', '-10']))
+    print(p.get_position_angle(['name']))
+    print(p.set_angle(['name', '90']))
+    print(p.get_position_angle(['name']))
+    print(p.leave(['name']))
+    print(p.refresh_players())
 

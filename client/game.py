@@ -28,31 +28,24 @@ class ClientInterface:
         try:
             # logging.warning(f"sending message {command_str}")
             sock.sendall(command_str.encode())
-            # Look for the response, waiting until socket is done (no more data)
-            data_received = ""  # empty string
+            data_received = ""
             while True:
-                # socket does not receive all data at once, data comes in part, need to be concatenated at the end of process
                 data = sock.recv(16)
                 if data:
-                    # data is not empty, concat with previous content
                     data_received += data.decode()
                     if "\r\n\r\n" in data_received:
                         break
                 else:
-                    # no more data, stop the process by break
                     break
-            # at this point, data_received (string) will contain all data coming from the socket
-            # to be able to use the data_received as a dict, need to load it using json.loads()
             hasil = json.loads(data_received)
             # logging.warning("data received from server:")
             return hasil
-        except:
-            # logging.warning("error during data receiving")
+        except Exception as e:
+            logging.warning("error during data receiving: " + str(e))
             return False
 
     def set_position(self, name, x, y):
         command_str = f"set_position {name} {x} {y}"
-        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return True
@@ -61,25 +54,30 @@ class ClientInterface:
 
     def set_angle(self, name, angle):
         command_str = f"set_angle {name} {angle}"
-        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return True
         else:
             return False
 
+    def get_position_angle(self, name):
+        command_str = f"get_position_angle {name}"
+        hasil = self.send_command(command_str)
+        if (self._is_success(hasil)):
+            return hasil['player']
+        else:
+            return None
+
     def join(self, name, x, y, angle):
         command_str = f"join {name} {x} {y} {angle}"
-        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return hasil['players']
         else:
             return None
 
-    def refresh(self):
-        command_str = f"refresh"
-        # logging.warning(command_str)
+    def refresh_players(self):
+        command_str = f"refresh_players"
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return hasil['players']
@@ -106,8 +104,8 @@ client_interface = ClientInterface()
 
 class Player:
     def __init__(self, name='1', r=1, g=0, b=0, is_controllable=False):
-        self.current_x = 100
-        self.current_y = 100
+        self.current_x = -100
+        self.current_y = -100
         self.warna_r = r
         self.warna_g = g
         self.warna_b = b
@@ -115,6 +113,7 @@ class Player:
         self.widget = Widget()
         self._keyboard = None
         self.angle = 0
+        self.has_left = False
 
         if is_controllable:
             self.inisialiasi()
@@ -125,6 +124,18 @@ class Player:
         self.angle = angle
 
     def draw(self):
+        cur_position_angle = client_interface.get_position_angle(self.name)
+
+        if cur_position_angle is None:
+            self.has_left = True
+            return
+
+        self.set_player_location(
+            float(cur_position_angle['x']),
+            float(cur_position_angle['y']),
+            float(cur_position_angle['angle'])
+        )
+
         wid = self.widget
         r = self.warna_r
         g = self.warna_g
@@ -209,26 +220,20 @@ class MyApp(App):
     player_name = 0
 
     def refresh(self, callback):
-        players_server = client_interface.refresh()
+        players_server = client_interface.refresh_players()
         if players_server:
             for player in players_server:
-                existing_player = next((j for j in self.players if j.name == player['name']), None)
-
-                if existing_player:
-                    existing_player.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
+                if any(player == p.name for p in self.players):
                     continue
 
-                new_player = Player(player['name'], 0, 1, 1)
-                new_player.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
-                self.players.append(new_player)
-                self.root.add_widget(new_player.widget)
+                self.add_new_player(Player(player, 0, 1, 1))
 
             for player in self.players:
-                if not any(j['name'] == player.name for j in players_server):
-                    self.root.remove_widget(player.widget)
-                    self.players.remove(player)
-
                 player.draw()
+
+                if player.has_left:
+                    self.players.remove(player)
+                    self.root.remove_widget(player.widget)
 
     def build(self):
         root = BoxLayout(orientation='horizontal')
@@ -251,19 +256,12 @@ class MyApp(App):
         p1.set_player_location(x, y, 0)
         
         joined = client_interface.join(p1.name, p1.current_x, p1.current_y, p1.current_y)
-        if joined:
-            self.players.append(p1)
-            self.root.add_widget(p1.widget)
+        if joined is not None:
             self.root.remove_widget(text_input)
+            self.add_new_player(p1)
 
             for player in joined:
-                if any(player['name'] == j.name for j in self.players):
-                    continue
-                
-                p = Player(player['name'], 0, 1, 1)
-                p.set_player_location(float(player['x']), float(player['y']), float(player['angle']))
-                self.players.append(p)
-                self.root.add_widget(p.widget)
+                self.add_new_player(Player(player, 0, 1, 1))
         else:
             text_input.text = ''
             text_input.hint_text = 'Coba nama lain'
@@ -274,6 +272,10 @@ class MyApp(App):
     def on_stop(self):
         client_interface.leave(self.player_name)
         return super().on_stop()
+
+    def add_new_player(self, player):
+        self.players.append(player)
+        self.root.add_widget(player.widget)
 
 if __name__ == '__main__':
     MyApp().run()
