@@ -15,7 +15,6 @@ class PlayerServerProtocol:
             # logging.warning(f"memproses request: {c_request}")
             params = [x for x in c[1:]]
             cl = getattr(self.file,c_request)(params)
-            print(cl)
             return json.dumps(cl)
         except Exception as e:
             return json.dumps(dict(status='ERROR',data=str(e)))

@@ -11,14 +11,11 @@ from kivy.uix.textinput import TextInput
 import socket
 import logging
 import json
-import random
-
-from matplotlib.pyplot import text
 
 class ClientInterface:
     def __init__(self):
-        # self.server_address=('18.141.176.62',6667)
-        self.server_address = ('localhost', 6667)
+        self.server_address=('18.141.176.62',6667)
+        # self.server_address = ('localhost', 6667)
 
     def send_command(self, command_str=""):
         global server_address
@@ -86,7 +83,6 @@ class ClientInterface:
 
     def leave(self, name):
         command_str = f"leave {name}"
-        # logging.warning(command_str)
         hasil = self.send_command(command_str)
         if (self._is_success(hasil)):
             return True
@@ -246,7 +242,12 @@ class MyApp(App):
     def _on_input_enter(self, text_input):  
         if ' ' in text_input.text:
             text_input.text = ''
-            text_input.hint_text = 'Coba nama lain'
+            text_input.hint_text = 'Ada spasi, coba nama lain'
+            return
+
+        if len(text_input.text) > 6:
+            text_input.text = ''
+            text_input.hint_text = 'Nama terlalu panjang, coba nama lain'
             return
 
         self.player_name = text_input.text
@@ -264,7 +265,7 @@ class MyApp(App):
                 self.add_new_player(Player(player, 0, 1, 1))
         else:
             text_input.text = ''
-            text_input.hint_text = 'Coba nama lain'
+            text_input.hint_text = 'Nama tidak tersedia, coba nama lain'
             return
 
         Clock.schedule_interval(self.refresh, 1/30)
@@ -278,4 +279,8 @@ class MyApp(App):
         self.root.add_widget(player.widget)
 
 if __name__ == '__main__':
-    MyApp().run()
+    my_app = MyApp()
+    try:
+        my_app.run()
+    except KeyboardInterrupt:
+        client_interface.leave(my_app.player_name)
