@@ -1,0 +1,91 @@
+MULTIPLAYER GAME SERVER
+TUJUAN: melayani klien game dalam request data pemain untuk interaksi pemain-pemain di game
+
+ATURAN PROTOKOL:
+- client mengirimkan request dalam bentuk string
+- string request dalam format
+  REQUEST spasi PARAMETER
+- PARAMETER dapat berkembang menjadi PARAMETER1 spasi PARAMETER2 dan seterusnya
+- PARAMETER tidak boleh mengandung spasi
+
+REQUEST YANG DILAYANI:
+- informasi umum:
+  * Jika request tidak dikenali akan menghasilkan pesan
+    - status: ERROR
+    - data: request tidak dikenali
+  * Semua result akan diberikan dalam bentuk JSON dan diakhiri
+    dengan character ascii code #13#10#13#10 atau "\r\n\r\n"
+
+JOIN
+* TUJUAN: untuk bergabung dengan server
+* PARAMETER: 
+  - PARAMETER1: nama pemain
+* RESULT:
+  - BERHASIL:
+    - status: OK
+    - player: list nama player yang telah tergabung di server (kecuali nama pemain yang bergabung)
+  - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
+
+LEAVE
+* TUJUAN: untuk keluar dari server
+* PARAMETER: 
+  - PARAMETER1: nama pemain
+* RESULT:
+  - BERHASIL:
+    - status: OK
+  - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
+
+REFRESH_PLAYERS
+* TUJUAN: mendapatkan semua pemain yang tergabung dalam server
+* PARAMETER: tidak ada
+* RESULT:
+  - BERHASIL:
+    - status: OK
+    - player: list semua nama player yang tergabung di server
+  - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
+
+SET_POSITION
+* TUJUAN: mengubah posisi pemain di server
+* PARAMETER: 
+  - PARAMETER1: nama pemain
+  - PARAMETER2: posisi x pemain
+  - PARAMETER3: posisi y pemain
+* RESULT:
+  - BERHASIL:
+    - status: OK
+  - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
+
+SET_ANGLE
+* TUJUAN: mengubah sudut arah pemain di server
+* PARAMETER:
+  - PARAMETER1: nama pemain
+  - PARAMETER2: sudut arah pemain
+* RESULT:
+  - BERHASIL:
+    - status: OK
+  - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
+
+GET_POSITION_ANGLE
+* TUJUAN: mendapatkan posisi dan sudut arah pemain
+* PARAMETER:
+  - PARAMETER1: nama pemain
+* RESULT:
+  - BERHASIL:
+    - status: OK
+    - player:
+      - x: posisi x pemain
+      - y: posisi y pemain
+      - angle: sudut arah pemain
+   - GAGAL:
+    - status: ERROR
+    - data: pesan kesalahan
