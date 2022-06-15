@@ -13,12 +13,10 @@ import logging
 import json
 import random
 
-from matplotlib.pyplot import text
-
 class ClientInterface:
     def __init__(self):
-        # self.server_address=('18.141.176.62',6667)
-        self.server_address = ('localhost', 6667)
+        self.server_address=('18.141.176.62',6667)
+        # self.server_address = ('localhost', 6667)
 
     def send_command(self, command_str=""):
         global server_address
